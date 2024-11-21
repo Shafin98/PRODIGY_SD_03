@@ -6,22 +6,34 @@ document.addEventListener("DOMContentLoaded", function () {
     const contactTableBody = document.querySelector("#contactTable tbody");
 
     // Handle form submission for adding or editing a contact
-    contactForm.addEventListener("submit", function (e) {
+    contactForm.addEventListener("submit", async function (e) {
         e.preventDefault();
 
         const name = document.getElementById("name").value.trim();
         const phone = document.getElementById("phone").value.trim();
         const email = document.getElementById("email").value.trim();
 
-        
+        if (!name || !phone || !email) {
+            // Show dialog using exposed API
+            await window.electronAPI.showDialog({
+                type: 'warning',
+                title: 'Invalid Input',
+                message: 'All fields are required.',
+            });
+            return;
+        }
 
         const contact = { name, phone, email };
         const duplicate = contacts.some(
-            (contact) => contact.name === name && contact.email === email
+            (contact) => contact.phone === phone && contact.email === email
         );
-        
+
         if (duplicate) {
-            alert("Same contact already exists.");
+            await window.electronAPI.showDialog({
+                type: 'error',
+                title: 'Duplicate Contact',
+                message: 'Same contact already exists.',
+            });
             return;
         }
 
@@ -75,9 +87,18 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 
         deleteButtons.forEach((button) => {
-            button.addEventListener("click", function () {
+            button.addEventListener("click", async function () {
                 const index = parseInt(this.dataset.index, 10);
-                deleteContact(index);
+                const result = await window.electronAPI.showDialog({
+                    type: 'question',
+                    title: 'Delete Contact',
+                    message: 'Are you sure you want to delete this contact?',
+                    buttons: ['Yes', 'No'],
+                });
+
+                if (result.response === 0) {
+                    deleteContact(index);
+                }
             });
         });
     }
@@ -96,10 +117,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Delete a contact
     function deleteContact(index) {
-        if (confirm("Are you sure you want to delete this contact?")) {
-            contacts.splice(index, 1);
-            renderContacts();
-        }
+        contacts.splice(index, 1);
+        renderContacts();
     }
 
     // Reset the form
